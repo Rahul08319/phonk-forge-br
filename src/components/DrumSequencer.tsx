@@ -1,8 +1,9 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Shuffle, RotateCcw } from "lucide-react";
+import { Shuffle, RotateCcw, Play, Pause } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export const DrumSequencer = () => {
   const [pattern, setPattern] = useState({
@@ -13,26 +14,61 @@ export const DrumSequencer = () => {
   });
 
   const [currentStep, setCurrentStep] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const { toast } = useToast();
 
   const drumNames = {
-    cowbell: "Cowbell",
-    kick: "Kick",
-    snare: "Snare/Clap",
-    hihat: "Hi-Hat",
+    cowbell: "🔔 Cowbell",
+    kick: "🥁 Kick",
+    snare: "👏 Snare/Clap",
+    hihat: "🎩 Hi-Hat",
   };
+
+  const drumColors = {
+    cowbell: "bg-yellow-500",
+    kick: "bg-red-500",
+    snare: "bg-blue-500",
+    hihat: "bg-green-500",
+  };
+
+  // Simulate sequencer playback
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    const interval = setInterval(() => {
+      setCurrentStep((prev) => (prev + 1) % 16);
+    }, 200); // 16 steps in ~3.2 seconds = ~75 BPM
+
+    return () => clearInterval(interval);
+  }, [isPlaying]);
 
   const toggleStep = (drum: keyof typeof pattern, step: number) => {
     setPattern(prev => ({
       ...prev,
       [drum]: prev[drum].map((active, i) => i === step ? !active : active)
     }));
+    
+    // Simulate drum hit sound feedback
+    if (!pattern[drum][step]) {
+      toast({
+        title: `${drumNames[drum]} hit!`,
+        description: `Step ${step + 1} activated`,
+        duration: 1000,
+      });
+    }
   };
 
   const randomizePattern = (drum: keyof typeof pattern) => {
+    const newPattern = Array(16).fill(false).map(() => Math.random() > 0.65);
     setPattern(prev => ({
       ...prev,
-      [drum]: Array(16).fill(false).map(() => Math.random() > 0.7)
+      [drum]: newPattern
     }));
+    
+    toast({
+      title: "Pattern randomized!",
+      description: `${drumNames[drum]} pattern generated`,
+    });
   };
 
   const clearPattern = (drum: keyof typeof pattern) => {
@@ -40,6 +76,36 @@ export const DrumSequencer = () => {
       ...prev,
       [drum]: Array(16).fill(false)
     }));
+    
+    toast({
+      title: "Pattern cleared",
+      description: `${drumNames[drum]} pattern reset`,
+    });
+  };
+
+  const applyPreset = (presetName: string) => {
+    const presets = {
+      "Classic Morro": {
+        cowbell: [true, false, false, true, true, false, false, true, true, false, false, true, false, false, true, false],
+        kick: [true, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false],
+        snare: [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false],
+        hihat: [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true],
+      },
+      "Rio Bounce": {
+        cowbell: [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false],
+        kick: [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false],
+        snare: [false, false, false, false, true, false, false, true, false, false, false, false, true, false, false, true],
+        hihat: [false, true, true, false, false, true, true, false, false, true, true, false, false, true, true, false],
+      }
+    };
+
+    if (presets[presetName as keyof typeof presets]) {
+      setPattern(presets[presetName as keyof typeof presets]);
+      toast({
+        title: "Preset loaded!",
+        description: `Applied ${presetName} drum pattern`,
+      });
+    }
   };
 
   return (
@@ -49,12 +115,42 @@ export const DrumSequencer = () => {
           <span className="flex items-center gap-2">
             🥁 Drum Sequencer
           </span>
-          <div className="text-sm font-normal text-gray-400">
-            16 Steps - Brazilian Phonk
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsPlaying(!isPlaying)}
+              className="border-purple-500/50 text-purple-300 hover:bg-purple-500/20"
+            >
+              {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+            </Button>
+            <div className="text-sm font-normal text-gray-400">
+              {isPlaying ? `Step ${currentStep + 1}/16` : "16 Steps"}
+            </div>
           </div>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Preset buttons */}
+        <div className="flex gap-2 mb-4">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => applyPreset("Classic Morro")}
+            className="border-purple-500/50 text-purple-300 hover:bg-purple-500/20 text-xs"
+          >
+            Classic Morro
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => applyPreset("Rio Bounce")}
+            className="border-purple-500/50 text-purple-300 hover:bg-purple-500/20 text-xs"
+          >
+            Rio Bounce
+          </Button>
+        </div>
+
         {(Object.keys(pattern) as Array<keyof typeof pattern>).map((drum) => (
           <div key={drum} className="space-y-2">
             <div className="flex items-center justify-between">
@@ -86,14 +182,15 @@ export const DrumSequencer = () => {
                   key={step}
                   onClick={() => toggleStep(drum, step)}
                   className={`
-                    aspect-square rounded-sm border transition-all duration-150
+                    aspect-square rounded-sm border transition-all duration-150 transform hover:scale-110
                     ${active 
-                      ? 'bg-purple-500 border-purple-400 shadow-purple-500/50 shadow-sm' 
+                      ? `${drumColors[drum]} border-white/50 shadow-lg` 
                       : 'bg-gray-800 border-gray-600 hover:border-purple-500/50'
                     }
-                    ${step === currentStep ? 'ring-2 ring-pink-400' : ''}
+                    ${step === currentStep && isPlaying ? 'ring-2 ring-pink-400 ring-opacity-75 animate-pulse' : ''}
                     ${step % 4 === 0 ? 'border-l-2 border-l-purple-300' : ''}
                   `}
+                  title={`${drumNames[drum]} - Step ${step + 1}`}
                 />
               ))}
             </div>
@@ -102,8 +199,10 @@ export const DrumSequencer = () => {
 
         <div className="pt-4 border-t border-purple-500/30">
           <div className="flex justify-between items-center text-sm">
-            <span className="text-gray-400">Pattern Length: 16 steps</span>
-            <span className="text-purple-300">Current: Step {currentStep + 1}</span>
+            <span className="text-gray-400">BPM: 85 | Pattern: 16 steps</span>
+            <span className="text-purple-300">
+              {isPlaying ? '▶️ Playing' : '⏸️ Stopped'}
+            </span>
           </div>
         </div>
       </CardContent>
