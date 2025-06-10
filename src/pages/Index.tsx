@@ -28,10 +28,17 @@ const Index = () => {
     stopAudio,
     createDrumSound,
     create808Bass,
+    setMasterVolume: setEngineVolume,
     isInitialized
   } = useAudioEngine();
 
+  // Update master volume when volume or mute state changes
+  useEffect(() => {
+    setEngineVolume(masterVolume, isMuted);
+  }, [masterVolume, isMuted, setEngineVolume]);
+
   const handleFileSelect = async (file: File) => {
+    console.log('File selected:', file.name);
     setAudioFile(file);
     await initAudioContext();
     await loadAudioFile(file);
@@ -41,7 +48,7 @@ const Index = () => {
     });
   };
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
     if (!audioFile) {
       toast({
         title: "No audio file loaded",
@@ -52,12 +59,14 @@ const Index = () => {
     }
     
     if (!isInitialized) {
-      initAudioContext();
+      console.log('Initializing audio context...');
+      await initAudioContext();
     }
 
     if (isPlaying) {
       stopAudio();
     } else {
+      console.log('Starting audio playback...');
       playAudio();
     }
     
@@ -103,6 +112,18 @@ const Index = () => {
               )}
             </div>
             <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2 bg-black/30 px-3 py-2 rounded-lg">
+                <span className="text-xs text-gray-400">Volume:</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={masterVolume}
+                  onChange={(e) => setMasterVolume(Number(e.target.value))}
+                  className="w-16 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer"
+                />
+                <span className="text-xs text-purple-300 w-8">{masterVolume}%</span>
+              </div>
               <Button
                 variant="outline"
                 size="sm"
