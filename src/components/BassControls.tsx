@@ -5,7 +5,11 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Volume2 } from "lucide-react";
 
-export const BassControls = () => {
+interface BassControlsProps {
+  onBassHit?: (note?: number) => void;
+}
+
+export const BassControls = ({ onBassHit }: BassControlsProps) => {
   const [bass, setBass] = useState({
     volume: 75,
     distortion: 60,
@@ -26,6 +30,19 @@ export const BassControls = () => {
     { name: "Punchy", settings: { volume: 75, distortion: 85, glide: 15, pitch: 0, tone: 60 } },
     { name: "Sub Bass", settings: { volume: 90, distortion: 45, glide: 40, pitch: -24, tone: 30 } },
   ];
+
+  const bassNotes = [
+    { note: 28, name: "A0" },
+    { note: 33, name: "A1" },
+    { note: 40, name: "E2" },
+    { note: 45, name: "A2" },
+  ];
+
+  const playBassNote = (note: number) => {
+    if (onBassHit) {
+      onBassHit(note);
+    }
+  };
 
   return (
     <Card className="border-purple-500/30 bg-black/40 backdrop-blur-sm">
@@ -48,6 +65,24 @@ export const BassControls = () => {
               {preset.name}
             </Button>
           ))}
+        </div>
+
+        {/* Bass Note Triggers */}
+        <div className="space-y-2">
+          <div className="text-sm text-purple-300">Bass Notes</div>
+          <div className="grid grid-cols-2 gap-2">
+            {bassNotes.map((bass) => (
+              <Button
+                key={bass.note}
+                variant="outline"
+                size="sm"
+                onClick={() => playBassNote(bass.note)}
+                className="border-purple-500/50 text-purple-300 hover:bg-purple-500/20"
+              >
+                {bass.name}
+              </Button>
+            ))}
+          </div>
         </div>
 
         <div className="space-y-4">
