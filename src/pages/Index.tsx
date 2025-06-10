@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { TempoControls } from "@/components/TempoControls";
@@ -7,7 +8,7 @@ import { BassControls } from "@/components/BassControls";
 import { ExportPanel } from "@/components/ExportPanel";
 import { AudioVisualization } from "@/components/AudioVisualization";
 import { Button } from "@/components/ui/button";
-import { Play, Pause, Square, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, Square, Volume2, VolumeX, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAudioEngine } from "@/hooks/useAudioEngine";
 
@@ -36,15 +37,42 @@ const Index = () => {
     setEngineVolume(masterVolume, isMuted);
   }, [masterVolume, isMuted, setEngineVolume]);
 
+  // Initialize audio on first user interaction
+  useEffect(() => {
+    const handleFirstInteraction = async () => {
+      if (!isInitialized) {
+        console.log('First user interaction - initializing audio...');
+        await initAudioContext();
+        toast({
+          title: "Audio engine ready",
+          description: "You can now play sounds and music",
+        });
+      }
+    };
+
+    document.addEventListener('click', handleFirstInteraction, { once: true });
+    return () => document.removeEventListener('click', handleFirstInteraction);
+  }, [initAudioContext, isInitialized, toast]);
+
   const handleFileSelect = async (file: File) => {
     console.log('File selected:', file.name);
     setAudioFile(file);
-    await initAudioContext();
-    await loadAudioFile(file);
-    toast({
-      title: "Audio file loaded",
-      description: "Ready to play and remix",
-    });
+    
+    try {
+      await initAudioContext();
+      await loadAudioFile(file);
+      toast({
+        title: "Audio file loaded",
+        description: "Ready to play and remix",
+      });
+    } catch (error) {
+      console.error('Error loading audio file:', error);
+      toast({
+        title: "Error loading file",
+        description: "Please try a different audio file",
+        variant: "destructive",
+      });
+    }
   };
 
   const handlePlayPause = async () => {
@@ -57,23 +85,36 @@ const Index = () => {
       return;
     }
     
-    if (!isInitialized) {
-      console.log('Initializing audio context...');
-      await initAudioContext();
-    }
+    try {
+      if (!isInitialized) {
+        console.log('Initializing audio context...');
+        await initAudioContext();
+      }
 
-    if (isPlaying) {
-      stopAudio();
-    } else {
-      console.log('Starting audio playback...');
-      playAudio();
+      if (isPlaying) {
+        stopAudio();
+        setIsPlaying(false);
+        toast({
+          title: "Playback stopped",
+          description: "Audio stopped",
+        });
+      } else {
+        console.log('Starting audio playback...');
+        await playAudio();
+        setIsPlaying(true);
+        toast({
+          title: "Playback started",
+          description: `Playing at ${targetBPM} BPM`,
+        });
+      }
+    } catch (error) {
+      console.error('Error during playback:', error);
+      toast({
+        title: "Playback error",
+        description: "Please try again or reload the page",
+        variant: "destructive",
+      });
     }
-    
-    setIsPlaying(!isPlaying);
-    toast({
-      title: isPlaying ? "Playback stopped" : "Playback started",
-      description: isPlaying ? "Audio stopped" : `Playing at ${targetBPM} BPM`,
-    });
   };
 
   const handleStop = () => {
@@ -93,6 +134,22 @@ const Index = () => {
     });
   };
 
+  const handleDrumHit = async (type: 'kick' | 'snare' | 'hihat' | 'cowbell') => {
+    try {
+      await createDrumSound(type);
+    } catch (error) {
+      console.error('Error playing drum sound:', error);
+    }
+  };
+
+  const handleBassHit = async (note?: number) => {
+    try {
+      await create808Bass(note);
+    } catch (error) {
+      console.error('Error playing bass sound:', error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-black text-white">
       {/* Header */}
@@ -107,6 +164,12 @@ const Index = () => {
               {audioFile && (
                 <div className="text-xs text-gray-400 bg-black/30 px-3 py-1.5 rounded-md">
                   🎵 {audioFile.name}
+                </div>
+              )}
+              {!isInitialized && (
+                <div className="flex items-center space-x-2 text-yellow-400 text-xs">
+                  <AlertCircle className="h-4 w-4" />
+                  <span>Click anywhere to enable audio</span>
                 </div>
               )}
             </div>
@@ -182,12 +245,12 @@ const Index = () => {
 
           {/* Center - Main Sequencer */}
           <section className="col-span-6">
-            <DrumSequencer onDrumHit={createDrumSound} />
+            <DrumSequencer onDrumHit={handleDrumHit} />
           </section>
 
           {/* Right Sidebar - Synthesis & FX */}
           <aside className="col-span-3 space-y-6">
-            <BassControls onBassHit={create808Bass} />
+            <BassControls onBassHit={handleBassHit} />
             <FXRack />
           </aside>
         </div>

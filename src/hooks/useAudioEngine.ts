@@ -9,12 +9,17 @@ export const useAudioEngine = () => {
   const [isInitialized, setIsInitialized] = useState(false);
 
   const initAudioContext = useCallback(async () => {
-    if (audioContextRef.current) {
-      console.log('Audio context already initialized');
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      console.log('Audio context already exists, resuming...');
+      if (audioContextRef.current.state === 'suspended') {
+        await audioContextRef.current.resume();
+      }
+      setIsInitialized(true);
       return;
     }
     
     try {
+      console.log('Initializing new audio context...');
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       
       // Create master gain node for volume control
@@ -24,25 +29,31 @@ export const useAudioEngine = () => {
       
       // Resume audio context if it's suspended
       if (audioContextRef.current.state === 'suspended') {
+        console.log('Resuming suspended audio context...');
         await audioContextRef.current.resume();
       }
       
       setIsInitialized(true);
-      console.log('Audio context initialized successfully');
+      console.log('Audio context initialized successfully, state:', audioContextRef.current.state);
     } catch (error) {
       console.error('Failed to initialize audio context:', error);
     }
   }, []);
 
   const loadAudioFile = useCallback(async (file: File) => {
-    if (!audioContextRef.current) await initAudioContext();
+    console.log('Loading audio file:', file.name);
+    
+    if (!audioContextRef.current) {
+      console.log('Audio context not initialized, initializing now...');
+      await initAudioContext();
+    }
+    
     if (!audioContextRef.current) {
       console.error('Audio context not available');
       return;
     }
 
     try {
-      console.log('Loading audio file:', file.name);
       const arrayBuffer = await file.arrayBuffer();
       const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
       audioBufferRef.current = audioBuffer;
@@ -55,25 +66,42 @@ export const useAudioEngine = () => {
   }, [initAudioContext]);
 
   const setMasterVolume = useCallback((volume: number, isMuted: boolean = false) => {
-    if (gainNodeRef.current) {
+    if (gainNodeRef.current && audioContextRef.current) {
       const actualVolume = isMuted ? 0 : volume / 100;
-      gainNodeRef.current.gain.setValueAtTime(actualVolume, audioContextRef.current?.currentTime || 0);
+      gainNodeRef.current.gain.setValueAtTime(actualVolume, audioContextRef.current.currentTime);
       console.log('Master volume set to:', actualVolume);
     }
   }, []);
 
-  const playAudio = useCallback(() => {
-    if (!audioContextRef.current || !audioBufferRef.current) {
-      console.error('Audio context or buffer not available');
+  const playAudio = useCallback(async () => {
+    console.log('Attempting to play audio...');
+    
+    if (!audioContextRef.current) {
+      console.log('No audio context, initializing...');
+      await initAudioContext();
+    }
+    
+    if (!audioBufferRef.current) {
+      console.error('No audio buffer loaded');
+      return;
+    }
+
+    if (!audioContextRef.current) {
+      console.error('Audio context still not available');
       return;
     }
 
     // Stop previous playback
     if (sourceRef.current) {
-      sourceRef.current.stop();
+      try {
+        sourceRef.current.stop();
+      } catch (e) {
+        console.log('Previous source already stopped');
+      }
     }
 
     try {
+      console.log('Creating new audio source...');
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBufferRef.current;
       
@@ -85,11 +113,11 @@ export const useAudioEngine = () => {
       
       source.start();
       sourceRef.current = source;
-      console.log('Audio playback started');
+      console.log('Audio playback started successfully');
     } catch (error) {
       console.error('Failed to start audio playback:', error);
     }
-  }, []);
+  }, [initAudioContext]);
 
   const stopAudio = useCallback(() => {
     if (sourceRef.current) {
@@ -103,7 +131,14 @@ export const useAudioEngine = () => {
     }
   }, []);
 
-  const createDrumSound = useCallback((type: 'kick' | 'snare' | 'hihat' | 'cowbell') => {
+  const createDrumSound = useCallback(async (type: 'kick' | 'snare' | 'hihat' | 'cowbell') => {
+    console.log('Creating drum sound:', type);
+    
+    if (!audioContextRef.current) {
+      console.log('Audio context not initialized for drum sound, initializing...');
+      await initAudioContext();
+    }
+    
     if (!audioContextRef.current) {
       console.error('Audio context not available for drum sound');
       return;
@@ -156,13 +191,20 @@ export const useAudioEngine = () => {
 
       oscillator.start(now);
       oscillator.stop(now + 0.5);
-      console.log('Drum sound played:', type);
+      console.log('Drum sound created and playing:', type);
     } catch (error) {
       console.error('Error creating drum sound:', error);
     }
-  }, []);
+  }, [initAudioContext]);
 
-  const create808Bass = useCallback((note: number = 40) => {
+  const create808Bass = useCallback(async (note: number = 40) => {
+    console.log('Creating 808 bass, note:', note);
+    
+    if (!audioContextRef.current) {
+      console.log('Audio context not initialized for bass sound, initializing...');
+      await initAudioContext();
+    }
+    
     if (!audioContextRef.current) {
       console.error('Audio context not available for bass sound');
       return;
@@ -197,18 +239,40 @@ export const useAudioEngine = () => {
 
       oscillator.start(now);
       oscillator.stop(now + 0.8);
-      console.log('808 bass played, note:', note, 'frequency:', frequency);
+      console.log('808 bass created and playing, note:', note, 'frequency:', frequency);
     } catch (error) {
       console.error('Error creating 808 bass sound:', error);
     }
-  }, []);
+  }, [initAudioContext]);
+
+  // Auto-initialize on first user interaction
+  useEffect(() => {
+    const handleUserInteraction = () => {
+      if (!isInitialized) {
+        console.log('User interaction detected, initializing audio context...');
+        initAudioContext();
+      }
+    };
+
+    document.addEventListener('click', handleUserInteraction, { once: true });
+    document.addEventListener('touchstart', handleUserInteraction, { once: true });
+
+    return () => {
+      document.removeEventListener('click', handleUserInteraction);
+      document.removeEventListener('touchstart', handleUserInteraction);
+    };
+  }, [initAudioContext, isInitialized]);
 
   useEffect(() => {
     return () => {
       if (sourceRef.current) {
-        sourceRef.current.stop();
+        try {
+          sourceRef.current.stop();
+        } catch (e) {
+          console.log('Source already stopped during cleanup');
+        }
       }
-      if (audioContextRef.current) {
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
     };
