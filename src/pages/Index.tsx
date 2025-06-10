@@ -88,26 +88,26 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-black text-white">
       {/* Header */}
-      <div className="border-b border-purple-500/30 bg-black/50 backdrop-blur-sm">
-        <div className="container mx-auto px-6 py-4">
+      <header className="border-b border-purple-500/30 bg-black/50 backdrop-blur-sm">
+        <div className="container mx-auto px-8 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="text-3xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+            <div className="flex items-center space-x-6">
+              <div className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                 PhonkMachine BR
               </div>
-              <div className="text-sm text-purple-300">Brazilian Phonk Generator</div>
+              <div className="text-sm text-purple-300 font-medium">Brazilian Phonk Generator</div>
               {audioFile && (
-                <div className="text-xs text-gray-400 bg-black/30 px-2 py-1 rounded">
+                <div className="text-xs text-gray-400 bg-black/30 px-3 py-1.5 rounded-md">
                   🎵 {audioFile.name}
                 </div>
               )}
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-3">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleVolumeToggle}
-                className="border-purple-500 text-purple-300 hover:bg-purple-500/20"
+                className="border-purple-500 text-purple-300 hover:bg-purple-500/20 h-10 w-10"
               >
                 {isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
               </Button>
@@ -115,7 +115,7 @@ const Index = () => {
                 variant="outline"
                 size="sm"
                 onClick={handlePlayPause}
-                className={`border-purple-500 hover:bg-purple-500/20 ${
+                className={`border-purple-500 hover:bg-purple-500/20 h-10 w-16 ${
                   audioFile 
                     ? 'text-purple-300' 
                     : 'text-gray-500 cursor-not-allowed opacity-50'
@@ -128,7 +128,7 @@ const Index = () => {
                 variant="outline"
                 size="sm"
                 onClick={handleStop}
-                className={`border-purple-500 hover:bg-purple-500/20 ${
+                className={`border-purple-500 hover:bg-purple-500/20 h-10 w-10 ${
                   audioFile 
                     ? 'text-purple-300' 
                     : 'text-gray-500 cursor-not-allowed opacity-50'
@@ -140,12 +140,13 @@ const Index = () => {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="container mx-auto px-6 py-6">
-        <div className="grid grid-cols-12 gap-6 h-[calc(100vh-120px)]">
-          {/* Left Panel - File Input & Analysis */}
-          <div className="col-span-3 space-y-6">
+      {/* Main Content */}
+      <main className="container mx-auto px-8 py-8">
+        <div className="grid grid-cols-12 gap-8 min-h-[calc(100vh-200px)]">
+          {/* Left Sidebar - Controls */}
+          <aside className="col-span-3 space-y-6">
             <FileUpload
               onFileSelect={handleFileSelect}
               detectedBPM={detectedBPM}
@@ -157,25 +158,25 @@ const Index = () => {
               onTargetBPMChange={setTargetBPM}
             />
             <AudioVisualization isPlaying={isPlaying} audioFile={audioFile} />
-          </div>
+          </aside>
 
-          {/* Center Panel - Drum Sequencer */}
-          <div className="col-span-6">
+          {/* Center - Main Sequencer */}
+          <section className="col-span-6">
             <DrumSequencer onDrumHit={createDrumSound} />
-          </div>
+          </section>
 
-          {/* Right Panel - FX & Bass */}
-          <div className="col-span-3 space-y-6">
+          {/* Right Sidebar - Synthesis & FX */}
+          <aside className="col-span-3 space-y-6">
             <BassControls onBassHit={create808Bass} />
             <FXRack />
-          </div>
+          </aside>
         </div>
 
         {/* Bottom Panel - Export */}
-        <div className="mt-6">
+        <footer className="mt-8 pt-8 border-t border-purple-500/30">
           <ExportPanel audioFile={audioFile} />
-        </div>
-      </div>
+        </footer>
+      </main>
     </div>
   );
 };
