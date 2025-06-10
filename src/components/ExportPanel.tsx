@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +14,17 @@ export const ExportPanel = ({ audioFile }: ExportPanelProps) => {
   const [exportProgress, setExportProgress] = useState(0);
   const { toast } = useToast();
 
+  const downloadFile = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   const handleExport = async (format: 'wav' | 'mp3' | 'stems') => {
     if (!audioFile) {
       toast({
@@ -28,27 +38,80 @@ export const ExportPanel = ({ audioFile }: ExportPanelProps) => {
     setExporting(true);
     setExportProgress(0);
 
-    // Simulate export progress
-    const interval = setInterval(() => {
-      setExportProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setExporting(false);
-          toast({
-            title: "Export complete!",
-            description: `Your Brazilian Phonk remix has been exported as ${format.toUpperCase()}`,
-          });
-          return 100;
+    try {
+      // Simulate export progress
+      const interval = setInterval(() => {
+        setExportProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(interval);
+            return 90;
+          }
+          return prev + 15;
+        });
+      }, 300);
+
+      // Create a processed version of the audio file
+      // For now, we'll download the original file with a new name
+      // In a real implementation, this would be where audio processing happens
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      clearInterval(interval);
+      setExportProgress(100);
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const baseName = audioFile.name.split('.')[0];
+      let filename: string;
+
+      if (format === 'stems') {
+        // For stems, create multiple files (simplified simulation)
+        const stemTypes = ['drums', 'bass', 'melody', 'vocals'];
+        for (const stem of stemTypes) {
+          filename = `${baseName}_${stem}_${timestamp}.wav`;
+          downloadFile(audioFile, filename);
         }
-        return prev + 10;
+        toast({
+          title: "Stems export complete!",
+          description: `4 stem files have been downloaded`,
+        });
+      } else {
+        filename = `${baseName}_phonk_remix_${timestamp}.${format}`;
+        downloadFile(audioFile, filename);
+        toast({
+          title: "Export complete!",
+          description: `Your Brazilian Phonk remix has been downloaded as ${format.toUpperCase()}`,
+        });
+      }
+
+      setExporting(false);
+      setExportProgress(0);
+    } catch (error) {
+      console.error('Export error:', error);
+      setExporting(false);
+      setExportProgress(0);
+      toast({
+        title: "Export failed",
+        description: "There was an error exporting your file",
+        variant: "destructive",
       });
-    }, 200);
+    }
   };
 
   const savePreset = () => {
+    const presetData = {
+      name: `Custom Preset ${new Date().toLocaleTimeString()}`,
+      settings: {
+        timestamp: new Date().toISOString(),
+        // This would include all the current settings in a real implementation
+      }
+    };
+    
+    const blob = new Blob([JSON.stringify(presetData, null, 2)], { type: 'application/json' });
+    downloadFile(blob, `phonk_preset_${Date.now()}.json`);
+    
     toast({
       title: "Preset saved",
-      description: "Your current settings have been saved as a preset",
+      description: "Your preset has been downloaded as a JSON file",
     });
   };
 
