@@ -10,6 +10,7 @@ import { AudioVisualization } from "@/components/AudioVisualization";
 import { Button } from "@/components/ui/button";
 import { Play, Pause, Square, Volume2, VolumeX } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAudioEngine } from "@/hooks/useAudioEngine";
 
 const Index = () => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -19,6 +20,26 @@ const Index = () => {
   const [masterVolume, setMasterVolume] = useState(75);
   const [isMuted, setIsMuted] = useState(false);
   const { toast } = useToast();
+  
+  const {
+    initAudioContext,
+    loadAudioFile,
+    playAudio,
+    stopAudio,
+    createDrumSound,
+    create808Bass,
+    isInitialized
+  } = useAudioEngine();
+
+  const handleFileSelect = async (file: File) => {
+    setAudioFile(file);
+    await initAudioContext();
+    await loadAudioFile(file);
+    toast({
+      title: "Audio file loaded",
+      description: "Ready to play and remix",
+    });
+  };
 
   const handlePlayPause = () => {
     if (!audioFile) {
@@ -30,6 +51,16 @@ const Index = () => {
       return;
     }
     
+    if (!isInitialized) {
+      initAudioContext();
+    }
+
+    if (isPlaying) {
+      stopAudio();
+    } else {
+      playAudio();
+    }
+    
     setIsPlaying(!isPlaying);
     toast({
       title: isPlaying ? "Playback stopped" : "Playback started",
@@ -38,6 +69,7 @@ const Index = () => {
   };
 
   const handleStop = () => {
+    stopAudio();
     setIsPlaying(false);
     toast({
       title: "Playback stopped",
@@ -115,7 +147,7 @@ const Index = () => {
           {/* Left Panel - File Input & Analysis */}
           <div className="col-span-3 space-y-6">
             <FileUpload
-              onFileSelect={setAudioFile}
+              onFileSelect={handleFileSelect}
               detectedBPM={detectedBPM}
               onBPMDetected={setDetectedBPM}
             />
@@ -129,12 +161,12 @@ const Index = () => {
 
           {/* Center Panel - Drum Sequencer */}
           <div className="col-span-6">
-            <DrumSequencer />
+            <DrumSequencer onDrumHit={createDrumSound} />
           </div>
 
           {/* Right Panel - FX & Bass */}
           <div className="col-span-3 space-y-6">
-            <BassControls />
+            <BassControls onBassHit={create808Bass} />
             <FXRack />
           </div>
         </div>

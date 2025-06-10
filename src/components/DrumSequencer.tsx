@@ -1,11 +1,14 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Shuffle, RotateCcw, Play, Pause } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-export const DrumSequencer = () => {
+interface DrumSequencerProps {
+  onDrumHit?: (type: 'kick' | 'snare' | 'hihat' | 'cowbell') => void;
+}
+
+export const DrumSequencer = ({ onDrumHit }: DrumSequencerProps) => {
   const [pattern, setPattern] = useState({
     cowbell: Array(16).fill(false).map((_, i) => i % 4 === 0),
     kick: Array(16).fill(false).map((_, i) => i === 0 || i === 8),
@@ -31,16 +34,28 @@ export const DrumSequencer = () => {
     hihat: "bg-green-500",
   };
 
-  // Simulate sequencer playback
+  // Enhanced sequencer playback with audio
   useEffect(() => {
     if (!isPlaying) return;
 
     const interval = setInterval(() => {
-      setCurrentStep((prev) => (prev + 1) % 16);
-    }, 200); // 16 steps in ~3.2 seconds = ~75 BPM
+      setCurrentStep((prev) => {
+        const nextStep = (prev + 1) % 16;
+        
+        // Check which drums should play on this step
+        Object.keys(pattern).forEach((drum) => {
+          const drumKey = drum as keyof typeof pattern;
+          if (pattern[drumKey][nextStep] && onDrumHit) {
+            onDrumHit(drumKey);
+          }
+        });
+        
+        return nextStep;
+      });
+    }, 200);
 
     return () => clearInterval(interval);
-  }, [isPlaying]);
+  }, [isPlaying, pattern, onDrumHit]);
 
   const toggleStep = (drum: keyof typeof pattern, step: number) => {
     setPattern(prev => ({
@@ -48,7 +63,11 @@ export const DrumSequencer = () => {
       [drum]: prev[drum].map((active, i) => i === step ? !active : active)
     }));
     
-    // Simulate drum hit sound feedback
+    // Play drum sound immediately when toggled on
+    if (!pattern[drum][step] && onDrumHit) {
+      onDrumHit(drum);
+    }
+    
     if (!pattern[drum][step]) {
       toast({
         title: `${drumNames[drum]} hit!`,
