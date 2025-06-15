@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { TempoControls } from "@/components/TempoControls";
