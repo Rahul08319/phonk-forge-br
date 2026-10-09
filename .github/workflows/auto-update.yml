@@ -1,0 +1,50 @@
+name: Automated Annual & Dependency Maintenance
+
+on:
+  schedule:
+    # Runs at 00:00 UTC on the 1st day of every month to keep repo active in coming years
+    - cron: '0 0 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    name: Automatic Yearly Calibration & Health Check
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Verify dependencies
+        run: |
+          npm ci --prefer-offline || npm install
+
+      - name: Verify build integrity
+        run: |
+          npm run build
+
+      - name: Dynamic Year & Calendar Calibration
+        run: |
+          CURRENT_YEAR=$(date +'%Y')
+          NEXT_YEAR=$((CURRENT_YEAR + 1))
+          echo "Calibrating for Active Year: $CURRENT_YEAR and Upcoming Year: $NEXT_YEAR"
+          # Check dynamic years in documentation and badges
+          sed -i -E "s/Year-[0-9]{4}-/Year-$CURRENT_YEAR-/g" README.md || true
+
+      - name: Automated Maintenance Commit
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(automated): calibrate sound bank calendar and yearly maintenance [skip ci]"
+          branch: main
+          file_pattern: "README.md package.json"
+          skip_dirty_check: false
