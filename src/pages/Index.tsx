@@ -215,9 +215,15 @@ const Index = () => {
       } else if (e.code === 'KeyS') {
         e.preventDefault();
         createDrumSound('snare');
+      } else if (e.code === 'KeyP') {
+        e.preventDefault();
+        createDrumSound('clap');
       } else if (e.code === 'KeyH') {
         e.preventDefault();
         createDrumSound('hihat');
+      } else if (e.code === 'KeyO') {
+        e.preventDefault();
+        createDrumSound('openhat');
       } else if (e.code === 'KeyT') {
         e.preventDefault();
         handleTapeStop();
@@ -418,12 +424,15 @@ const Index = () => {
                 <Keyboard className="h-3.5 w-3.5" /> HARDWARE KEYMAP:
               </span>
               <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[Space]</kbd> Play/Pause</span>
-              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[C]</kbd> Roland Cowbell</span>
-              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[K]</kbd> 808 Kick</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[C]</kbd> Cowbell</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[K]</kbd> Kick</span>
               <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[S]</kbd> Snare</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[P]</kbd> Clap</span>
               <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[H]</kbd> Hi-Hat</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[O]</kbd> Open Hat</span>
               <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[T]</kbd> Tape Stop</span>
-              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[1-8]</kbd> 808 Bass Pads</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[M]</kbd> Mute</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[1-8]</kbd> 808 Bass</span>
             </div>
             <button
               onClick={() => setShowShortcuts(false)}
