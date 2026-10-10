@@ -7,11 +7,12 @@ import { Activity, Radio, BarChart3, Waves } from "lucide-react";
 interface AudioVisualizationProps {
   isPlaying: boolean;
   audioFile?: File | null;
+  getAudioData?: () => Uint8Array | null;
 }
 
 type VisualMode = 'liquid' | 'spectrum' | 'scope';
 
-export const AudioVisualization = ({ isPlaying, audioFile }: AudioVisualizationProps) => {
+export const AudioVisualization = ({ isPlaying, audioFile, getAudioData }: AudioVisualizationProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
   const [mode, setMode] = useState<VisualMode>('spectrum');

@@ -7,7 +7,7 @@ import { Volume2, Zap, Sliders, Music2 } from "lucide-react";
 import { phonkEngine } from "@/lib/phonkAudioEngine";
 
 interface BassControlsProps {
-  onBassHit?: (note?: number) => void;
+  onBassHit?: (note?: number, glideTime?: number) => void;
 }
 
 export const BassControls = ({ onBassHit }: BassControlsProps) => {
@@ -93,7 +93,7 @@ export const BassControls = ({ onBassHit }: BassControlsProps) => {
     phonkEngine.setDistortionAmount(bass.distortion);
     phonkEngine.play808Bass(note, (bass.decay / 100) * 1.2);
 
-    if (onBassHit) onBassHit(note);
+    if (onBassHit) onBassHit(note, bass.glide / 1000);
 
     setTimeout(() => {
       setActiveNote(null);

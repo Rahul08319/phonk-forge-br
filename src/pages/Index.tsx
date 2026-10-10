@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { FileUpload } from "@/components/FileUpload";
 import { TempoControls } from "@/components/TempoControls";
 import { DrumSequencer } from "@/components/DrumSequencer";
@@ -8,7 +8,10 @@ import { ExportPanel } from "@/components/ExportPanel";
 import { AudioVisualization } from "@/components/AudioVisualization";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, Pause, Square, Volume2, VolumeX, Sparkles, Github, Radio, Sliders } from "lucide-react";
+import { 
+  Play, Pause, Square, Volume2, VolumeX, Sparkles, Github, Radio, 
+  Keyboard, HelpCircle, Activity, Zap 
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAudioEngine, FXSettings } from "@/hooks/useAudioEngine";
 
@@ -19,6 +22,11 @@ const Index = () => {
   const [targetBPM, setTargetBPM] = useState(85);
   const [masterVolume, setMasterVolume] = useState(80);
   const [isMuted, setIsMuted] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [vuLeft, setVuLeft] = useState(0);
+  const [vuRight, setVuRight] = useState(0);
+
+  const vuIntervalRef = useRef<number>();
   const { toast } = useToast();
 
   const currentYear = new Date().getFullYear();
@@ -42,6 +50,40 @@ const Index = () => {
   useEffect(() => {
     setEngineVolume(masterVolume, isMuted);
   }, [masterVolume, isMuted, setEngineVolume]);
+
+  // Real-time Stereo VU Meter animation loop
+  useEffect(() => {
+    const updateVU = () => {
+      if (isPlaying) {
+        const { frequencyData } = getAudioData();
+        if (frequencyData && frequencyData.length > 0) {
+          // Average low frequencies (left) and high frequencies (right)
+          let sumLow = 0;
+          let sumHigh = 0;
+          const half = Math.floor(frequencyData.length / 2);
+          for (let i = 0; i < half; i++) sumLow += frequencyData[i];
+          for (let i = half; i < frequencyData.length; i++) sumHigh += frequencyData[i];
+
+          const avgL = sumLow / half / 255;
+          const avgR = sumHigh / half / 255;
+          setVuLeft(Math.min(10, Math.floor(avgL * 14)));
+          setVuRight(Math.min(10, Math.floor(avgR * 14)));
+        } else {
+          setVuLeft(Math.floor(Math.random() * 6) + 2);
+          setVuRight(Math.floor(Math.random() * 6) + 2);
+        }
+      } else {
+        setVuLeft((prev) => Math.max(0, prev - 1));
+        setVuRight((prev) => Math.max(0, prev - 1));
+      }
+      vuIntervalRef.current = requestAnimationFrame(updateVU);
+    };
+
+    vuIntervalRef.current = requestAnimationFrame(updateVU);
+    return () => {
+      if (vuIntervalRef.current) cancelAnimationFrame(vuIntervalRef.current);
+    };
+  }, [isPlaying, getAudioData]);
 
   // Unlock audio context on initial click anywhere
   useEffect(() => {
@@ -131,7 +173,7 @@ const Index = () => {
   };
 
   // Handle Drum Hit
-  const handleDrumHit = async (type: 'kick' | 'snare' | 'hihat' | 'cowbell') => {
+  const handleDrumHit = async (type: 'kick' | 'snare' | 'clap' | 'hihat' | 'openhat' | 'cowbell') => {
     await createDrumSound(type);
   };
 
@@ -155,11 +197,60 @@ const Index = () => {
     });
   };
 
+  // Hardware Keyboard Shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in input or textarea
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handlePlayPause();
+      } else if (e.code === 'KeyC') {
+        e.preventDefault();
+        createDrumSound('cowbell');
+      } else if (e.code === 'KeyK') {
+        e.preventDefault();
+        createDrumSound('kick');
+      } else if (e.code === 'KeyS') {
+        e.preventDefault();
+        createDrumSound('snare');
+      } else if (e.code === 'KeyH') {
+        e.preventDefault();
+        createDrumSound('hihat');
+      } else if (e.code === 'KeyT') {
+        e.preventDefault();
+        handleTapeStop();
+      } else if (e.code === 'KeyM') {
+        e.preventDefault();
+        handleVolumeToggle();
+      } else if (e.code.startsWith('Digit')) {
+        const digit = parseInt(e.code.replace('Digit', ''), 10);
+        const notes = [28, 31, 33, 36, 37, 40, 45, 48];
+        if (digit >= 1 && digit <= 8) {
+          e.preventDefault();
+          create808Bass(notes[digit - 1]);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handlePlayPause, createDrumSound, create808Bass, handleTapeStop, handleVolumeToggle]);
+
   return (
-    <div className="min-h-screen text-white flex flex-col justify-between selection:bg-purple-500 selection:text-white">
-      {/* Top Ambient Glow Highlights */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[850px] h-[280px] bg-purple-600/15 blur-[120px] pointer-events-none rounded-full" />
-      <div className="fixed top-40 right-10 w-[450px] h-[350px] bg-cyan-500/10 blur-[130px] pointer-events-none rounded-full" />
+    <div className="min-h-screen text-white flex flex-col justify-between selection:bg-purple-500 selection:text-white relative">
+      {/* Dynamic Audio Ambient Lighting - Pulses gently with tempo */}
+      <div 
+        className={`fixed top-0 left-1/2 -translate-x-1/2 w-[850px] h-[300px] bg-purple-600/15 blur-[120px] pointer-events-none rounded-full transition-all duration-300 ${
+          isPlaying ? 'scale-110 opacity-100' : 'scale-100 opacity-60'
+        }`} 
+      />
+      <div 
+        className={`fixed top-40 right-10 w-[450px] h-[350px] bg-cyan-500/10 blur-[130px] pointer-events-none rounded-full transition-all duration-300 ${
+          isPlaying ? 'scale-110 opacity-100' : 'scale-100 opacity-50'
+        }`} 
+      />
 
       {/* Apple Liquid Glass Header */}
       <header className="sticky top-0 z-50 apple-glass border-b border-white/10">
@@ -188,19 +279,50 @@ const Index = () => {
                 </div>
               </div>
 
-              <div className="hidden lg:flex items-center gap-2 pl-4 border-l border-white/10">
+              {/* Hardware Stereo VU Meters */}
+              <div className="hidden xl:flex items-center gap-3 pl-4 border-l border-white/10">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-[9px] font-mono text-zinc-500">
+                    <span>L</span>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`w-1.5 h-2.5 rounded-xs transition-colors duration-75 ${
+                            i < vuLeft
+                              ? i > 7 ? 'bg-rose-500 shadow-[0_0_6px_#f43f5e]' : i > 5 ? 'bg-amber-400' : 'bg-emerald-400'
+                              : 'bg-zinc-800'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[9px] font-mono text-zinc-500">
+                    <span>R</span>
+                    <div className="flex gap-0.5">
+                      {Array.from({ length: 10 }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`w-1.5 h-2.5 rounded-xs transition-colors duration-75 ${
+                            i < vuRight
+                              ? i > 7 ? 'bg-rose-500 shadow-[0_0_6px_#f43f5e]' : i > 5 ? 'bg-amber-400' : 'bg-emerald-400'
+                              : 'bg-zinc-800'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
                 <Badge variant="outline" className="apple-glass-pill text-[10px] text-emerald-400 border-emerald-500/30 flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>DSP ENGINE 44.1kHz</span>
-                </Badge>
-                <Badge variant="outline" className="apple-glass-pill text-[10px] text-purple-300 border-purple-500/30">
-                  🇧🇷 BAILE ACOUSTICS
+                  <span className={`w-1.5 h-1.5 rounded-full ${isPlaying ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
+                  <span>{isPlaying ? 'ACTIVE 44.1kHz' : 'READY'}</span>
                 </Badge>
               </div>
             </div>
 
             {/* Master Transport & Controls */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {/* Volume Slider */}
               <div className="hidden sm:flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-xl">
                 <Button
@@ -259,6 +381,19 @@ const Index = () => {
                 </Button>
               </div>
 
+              {/* Keyboard Shortcuts Toggle Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowShortcuts(!showShortcuts)}
+                className={`apple-spring-btn apple-glass-pill h-8 px-2.5 rounded-xl text-xs ${
+                  showShortcuts ? 'text-purple-300 border-purple-500/50 bg-purple-500/10' : 'text-zinc-400 hover:text-white'
+                }`}
+                title="Keyboard Shortcuts"
+              >
+                <Keyboard className="h-3.5 w-3.5" />
+              </Button>
+
               {/* GitHub Repo Link */}
               <a
                 href="https://github.com/Rahul08319/phonk-forge-br"
@@ -273,6 +408,32 @@ const Index = () => {
           </div>
         </div>
       </header>
+
+      {/* Floating Hardware Shortcuts Bar */}
+      {showShortcuts && (
+        <div className="container mx-auto px-4 sm:px-8 pt-4 transition-all animate-in fade-in slide-in-from-top-2">
+          <div className="bg-white/[0.04] border border-white/15 backdrop-blur-2xl p-3 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs font-mono shadow-2xl">
+            <div className="flex flex-wrap items-center gap-3 text-zinc-300">
+              <span className="flex items-center gap-1 text-purple-400 font-bold">
+                <Keyboard className="h-3.5 w-3.5" /> HARDWARE KEYMAP:
+              </span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[Space]</kbd> Play/Pause</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[C]</kbd> Roland Cowbell</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[K]</kbd> 808 Kick</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[S]</kbd> Snare</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[H]</kbd> Hi-Hat</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[T]</kbd> Tape Stop</span>
+              <span><kbd className="px-1.5 py-0.5 bg-white/10 rounded border border-white/20 text-white">[1-8]</kbd> 808 Bass Pads</span>
+            </div>
+            <button
+              onClick={() => setShowShortcuts(false)}
+              className="text-zinc-500 hover:text-white px-2"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Studio Workstation Bento Grid */}
       <main className="container mx-auto px-4 sm:px-8 py-8 flex-1">

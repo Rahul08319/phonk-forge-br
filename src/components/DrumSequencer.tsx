@@ -9,15 +9,17 @@ import { phonkEngine } from "@/lib/phonkAudioEngine";
 interface DrumSequencerProps {
   onDrumHit?: (type: 'kick' | 'snare' | 'clap' | 'hihat' | 'openhat' | 'cowbell') => void;
   targetBpm?: number;
+  bpm?: number;
   onBpmChange?: (bpm: number) => void;
 }
 
 type TrackKey = 'kick' | 'snare' | 'clap' | 'hihat' | 'openhat' | 'cowbell';
 
-export const DrumSequencer = ({ onDrumHit, targetBpm = 130, onBpmChange }: DrumSequencerProps) => {
+export const DrumSequencer = ({ onDrumHit, targetBpm, bpm: propBpm, onBpmChange }: DrumSequencerProps) => {
+  const initialBpm = propBpm || targetBpm || 130;
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [bpm, setBpm] = useState(targetBpm);
+  const [bpm, setBpm] = useState(initialBpm);
   const [swing, setSwing] = useState(15);
   const [mutedTracks, setMutedTracks] = useState<Record<TrackKey, boolean>>({
     kick: false,
@@ -102,12 +104,13 @@ export const DrumSequencer = ({ onDrumHit, targetBpm = 130, onBpmChange }: DrumS
     }
   ];
 
-  // Sync external targetBPM
+  // Sync external targetBpm or propBpm
   useEffect(() => {
-    if (targetBpm && targetBpm !== bpm) {
-      setBpm(targetBpm);
+    const external = propBpm || targetBpm;
+    if (external && external !== bpm) {
+      setBpm(external);
     }
-  }, [targetBpm]);
+  }, [targetBpm, propBpm, bpm]);
 
   // Audio Playback Sequencer Loop
   useEffect(() => {

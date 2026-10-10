@@ -6,7 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Waves, Disc3, Flame, Radio, Sparkles, SlidersHorizontal } from "lucide-react";
 import { phonkEngine } from "@/lib/phonkAudioEngine";
 
-export const FXRack = () => {
+interface FXRackProps {
+  onFXChange?: (settings: Record<string, unknown>) => void;
+  onTapeStop?: () => void;
+}
+
+export const FXRack = ({ onFXChange, onTapeStop }: FXRackProps = {}) => {
   const [effects, setEffects] = useState({
     vinylCrackle: { enabled: true, amount: 40, label: "Vinyl Lo-Fi Surface", icon: Disc3, color: "text-amber-400" },
     saturation: { enabled: true, amount: 65, label: "Tape Harmonic Saturation", icon: Flame, color: "text-rose-400" },
@@ -75,9 +80,20 @@ export const FXRack = () => {
               <p className="text-[11px] text-zinc-400">Analog processing & lo-fi texture</p>
             </div>
           </div>
-          <Badge variant="outline" className="border-purple-500/30 text-purple-400 text-[10px] bg-purple-500/10">
-            DSP ACTIVE
-          </Badge>
+          <div className="flex items-center gap-2">
+            {onTapeStop && (
+              <button
+                onClick={onTapeStop}
+                className="apple-spring-btn px-2.5 py-0.5 rounded-full border border-rose-500/40 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 text-[10px] font-mono flex items-center gap-1 shadow-sm transition-all"
+                title="Trigger Analog Tape Stop Slowdown"
+              >
+                <span>📼 TAPE STOP</span>
+              </button>
+            )}
+            <Badge variant="outline" className="border-purple-500/30 text-purple-400 text-[10px] bg-purple-500/10">
+              DSP ACTIVE
+            </Badge>
+          </div>
         </div>
 
         {/* Presets */}

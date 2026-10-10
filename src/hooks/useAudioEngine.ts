@@ -394,8 +394,8 @@ export const useAudioEngine = () => {
     }
   }, [stopAudio]);
 
-  // Drum Synthesizer: Kick, Snare, Hi-Hat, Roland TR-808 Phonk Cowbell
-  const createDrumSound = useCallback(async (type: 'kick' | 'snare' | 'hihat' | 'cowbell') => {
+  // Drum Synthesizer: Kick, Snare, Clap, Hi-Hat, Open Hat, Roland TR-808 Phonk Cowbell
+  const createDrumSound = useCallback(async (type: 'kick' | 'snare' | 'clap' | 'hihat' | 'openhat' | 'cowbell') => {
     const ctx = await initAudioContext();
     if (!ctx) return;
 
@@ -474,6 +474,41 @@ export const useAudioEngine = () => {
         hatGain.connect(dest);
 
         hat.start(now);
+      } else if (type === 'openhat') {
+        const hatBufferSize = ctx.sampleRate * 0.25;
+        const hatBuffer = ctx.createBuffer(1, hatBufferSize, ctx.sampleRate);
+        const data = hatBuffer.getChannelData(0);
+        for (let i = 0; i < hatBufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const hat = ctx.createBufferSource();
+        hat.buffer = hatBuffer;
+        const hatFilter = ctx.createBiquadFilter();
+        hatFilter.type = 'highpass';
+        hatFilter.frequency.setValueAtTime(6500, now);
+        const hatGain = ctx.createGain();
+        hatGain.gain.setValueAtTime(0.4, now);
+        hatGain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+        hat.connect(hatFilter);
+        hatFilter.connect(hatGain);
+        hatGain.connect(dest);
+        hat.start(now);
+      } else if (type === 'clap') {
+        const clapBufferSize = ctx.sampleRate * 0.28;
+        const clapBuffer = ctx.createBuffer(1, clapBufferSize, ctx.sampleRate);
+        const data = clapBuffer.getChannelData(0);
+        for (let i = 0; i < clapBufferSize; i++) data[i] = Math.random() * 2 - 1;
+        const clap = ctx.createBufferSource();
+        clap.buffer = clapBuffer;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1400, now);
+        filter.Q.setValueAtTime(2.0, now);
+        const gain = ctx.createGain();
+        gain.gain.setValueAtTime(0.65, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        clap.connect(filter);
+        filter.connect(gain);
+        gain.connect(dest);
+        clap.start(now);
       } else if (type === 'cowbell') {
         // Authentic Roland TR-808 Phonk Cowbell dual-square oscillator
         const osc1 = ctx.createOscillator();
